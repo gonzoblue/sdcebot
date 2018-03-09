@@ -48,7 +48,7 @@ def sendEmail():
         msg['From'] = fromaddr
         msg['To'] = toaddr
         msg['Subject']= "SDCE: " + title
-        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\nContent:" + linkInfo
+        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\n" + linkInfo
 #       msg.attach(MIMEText(body, 'plain'))
 #       email = smtplib.SMTP(EMAIL_SERVER, 587)
 #       email.ehlo()
@@ -68,6 +68,7 @@ soup = BeautifulSoup(r.text, 'html.parser')
 
 table = soup.find("table", { "class" : "table table-striped news-list" })
 for row in table.findAll("tr"):
+        linkInfo = "-=-"
         cells = row.findAll("td")
         if str(cells[1].get_text()).strip() == "Headline":
                 print "Table found! Processing... \n"
@@ -75,10 +76,7 @@ for row in table.findAll("tr"):
                 date = str(cells[0].get_text()).strip()
                 title = str(cells[1].get_text()).strip()
                 link = "http://www.sdcountyemergency.com" + str(cells[1].find("a")["href"]).strip()
-##              print date + "  |  " + title
                 savetype = storeCall() #Return type is 0 for old, 1 for new
-##              print linkInfo + "\n----END\n"
-##              print savetype
                 if savetype > 0:
                         linkInfo = getLinkInfo()
                         sendEmail()
