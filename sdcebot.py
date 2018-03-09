@@ -1,3 +1,4 @@
+
 #Automated SD County Emergency email
 
 #Imports
@@ -22,7 +23,9 @@ def getLinkInfo():
         soup = BeautifulSoup(linkpage.text, 'html.parser')
         fullInfo = soup.find('div', {'class': 'page-copy'})
         info = fullInfo.findAll('div', {'class': 'xrm-attribute-value'})
-        return info[2].text
+        infoText = info[2].text
+        return infoText.encode('utf-8').strip()
+
 
 def storeCall():
         c.execute('SELECT dbid FROM calls WHERE dbdate=?', (date,)) #search for the call in the DB by dispatch date/time
@@ -48,16 +51,16 @@ def sendEmail():
         msg['From'] = fromaddr
         msg['To'] = toaddr
         msg['Subject']= "SDCE: " + title
-        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\n" + linkInfo
-#       msg.attach(MIMEText(body, 'plain'))
-#       email = smtplib.SMTP(EMAIL_SERVER, 587)
-#       email.ehlo()
-#       email.starttls()
-#       email.ehlo()
-#       email.login(EMAIL_FROM,EMAIL_PASS)
-#       text = msg.as_string()
-#       email.sendmail(EMAIL_FROM, EMAIL_TO, text)
-#       email.quit()
+        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\n" + str(linkInfo)
+        msg.attach(MIMEText(body, 'plain'))
+        email = smtplib.SMTP(EMAIL_SERVER, 587)
+        email.ehlo()
+        email.starttls()
+        email.ehlo()
+        email.login(EMAIL_FROM,EMAIL_PASS)
+        text = msg.as_string()
+        email.sendmail(EMAIL_FROM, EMAIL_TO, text)
+        email.quit()
         print "Emailed:\n" + body
         return
 
