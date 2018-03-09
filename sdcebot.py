@@ -17,6 +17,13 @@ c = db.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS calls (dbid INTEGER PRIMARY KEY, dbdate TEXT, dbtitle TEXT, dblink TEXT, dbupdatetime timestamp)')
 db.commit()
 
+def getLinkInfo():
+        linkpage = requests.get(link)
+        soup = BeautifulSoup(linkpage.text, 'html.parser')
+        fullInfo = soup.find('div', {'class': 'page-copy'})
+        info = fullInfo.findAll('div', {'class': 'xrm-attribute-value'})
+        return info[2].text
+
 def storeCall():
         c.execute('SELECT dbid FROM calls WHERE dbdate=?', (date,)) #search for the call in the DB by dispatch date/time
         thisCall = c.fetchone()
@@ -34,24 +41,24 @@ def storeCall():
         return -1
 
 
-def sendEmail(footer):
+def sendEmail():
         fromaddr = EMAIL_FROM
         toaddr = EMAIL_TO
         msg = MIMEMultipart()
         msg['From'] = fromaddr
         msg['To'] = toaddr
-        msg['Subject']= "SDCE: " + calltype
-        body = link + "\n Published: " + date
-        msg.attach(MIMEText(body, 'plain'))
-        email = smtplib.SMTP(EMAIL_SERVER, 587)
-        email.ehlo()
-        email.starttls()
-        email.ehlo()
-        email.login(EMAIL_FROM,EMAIL_PASS)
-        text = msg.as_string()
-        email.sendmail(EMAIL_FROM, EMAIL_TO, text)
-        email.quit()
-        print "Emailed: " + calltype + " @ " + calldate
+        msg['Subject']= "SDCE: " + title
+        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\nContent:" + linkInfo
+#       msg.attach(MIMEText(body, 'plain'))
+#       email = smtplib.SMTP(EMAIL_SERVER, 587)
+#       email.ehlo()
+#       email.starttls()
+#       email.ehlo()
+#       email.login(EMAIL_FROM,EMAIL_PASS)
+#       text = msg.as_string()
+#       email.sendmail(EMAIL_FROM, EMAIL_TO, text)
+#       email.quit()
+        print "Emailed:\n" + body
         return
 
 
@@ -70,12 +77,14 @@ for row in table.findAll("tr"):
                 link = "http://www.sdcountyemergency.com" + str(cells[1].find("a")["href"]).strip()
 ##              print date + "  |  " + title
                 savetype = storeCall() #Return type is 0 for old, 1 for new
+##              print linkInfo + "\n----END\n"
 ##              print savetype
-#               if savetype > 0
-#                       sendEmail()
-#               if savetype < 0
-#                       title = "Error!"
-#                       sendEmail()
+                if savetype > 0:
+                        linkInfo = getLinkInfo()
+                        sendEmail()
+                elif savetype < 0:
+                        title = "Error!"
+                        sendEmail()
 
 print "\nFinished."
 exit()
