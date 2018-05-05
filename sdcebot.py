@@ -3,6 +3,7 @@
 
 #Imports
 import smtplib
+import unicodedata
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 from secrets import EMAIL_FROM, EMAIL_TO, EMAIL_PASS, EMAIL_SERVER, DBPATH
@@ -23,8 +24,8 @@ def getLinkInfo():
         soup = BeautifulSoup(linkpage.text, 'html.parser')
         fullInfo = soup.find('div', {'class': 'page-copy'})
         info = fullInfo.findAll('div', {'class': 'xrm-attribute-value'})
-        infoText = info[2].text
-        return infoText.encode('utf-8').strip()
+        infoText = info[2].text.strip()
+        return infoText.encode('ascii', 'ignore')
 
 
 def storeCall():
@@ -32,34 +33,31 @@ def storeCall():
         thisCall = c.fetchone()
         now = datetime.now()
         if thisCall > 0:  #if call exists in DB
-                print "# " + date + "  |  " + title
+                print "- " + date + "  |  " + title
                 return 0
         else:  #if this call is new
                 c.execute('INSERT INTO calls(dbdate, dbtitle, dblink, dbupdatetime) VALUES(?,?,?,?)', (date, title, link, now))
                 db.commit()
                 c.execute('SELECT * FROM calls WHERE dbdate=?', (date,))
                 call = c.fetchone()
-                print "+" + str(call)
+                print str(call)
                 return 1
         return -1
 
 
 def sendEmail():
-        fromaddr = EMAIL_FROM
-        toaddr = EMAIL_TO
         msg = MIMEMultipart()
-        msg['From'] = fromaddr
-        msg['To'] = toaddr
-        msg['Subject']= "SDCE: " + title
-        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\n" + str(linkInfo)
+        msg['From'] = EMAIL_FROM
+        msg['To'] = ','.join(EMAIL_TO)
+        msg['Subject']= "[SDCE] " + title
+        body = "Published: " + date + "\nTitle: " + title + "\nLink: " + link + "\n\n" + linkInfo
         msg.attach(MIMEText(body, 'plain'))
         email = smtplib.SMTP(EMAIL_SERVER, 587)
         email.ehlo()
         email.starttls()
         email.ehlo()
         email.login(EMAIL_FROM,EMAIL_PASS)
-        text = msg.as_string()
-        email.sendmail(EMAIL_FROM, EMAIL_TO, text)
+        email.sendmail(EMAIL_FROM, EMAIL_TO, msg.as_string())
         email.quit()
         print "Emailed:\n" + body
         return
@@ -73,12 +71,18 @@ table = soup.find("table", { "class" : "table table-striped news-list" })
 for row in table.findAll("tr"):
         linkInfo = "-=-"
         cells = row.findAll("td")
-        if str(cells[1].get_text()).strip() == "Headline":
+
+        if len(cells) != 3:
+                print "Table not correct size. Exiting."
+                exit(1)
+
+        if cells[1].get_text().strip() == "Headline":
                 print "Table found! Processing... \n"
-        elif len(cells) == 3:
-                date = str(cells[0].get_text()).strip()
-                title = str(cells[1].get_text()).strip()
-                link = "http://www.sdcountyemergency.com" + str(cells[1].find("a")["href"]).strip()
+        else:
+                date = cells[0].get_text().strip()
+                title = cells[1].get_text().strip()
+                title = unicodedata.normalize('NFKD', title).encode('ascii','ignore')
+                link = "http://www.sdcountyemergency.com" + cells[1].find("a")["href"].strip()
                 savetype = storeCall() #Return type is 0 for old, 1 for new
                 if savetype > 0:
                         linkInfo = getLinkInfo()
